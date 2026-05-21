@@ -115,12 +115,17 @@ function App() {
             return (
               <article className={`card ${isExpanded ? 'expanded' : ''}`} key={article.id}>
                 <button className="card-main" onClick={() => void toggleArticle(article)} aria-expanded={isExpanded}>
-                  <span>{article.sourceName}</span>
+                  <div className="card-topline">
+                    <span>{article.sourceName}</span>
+                    <span className="expand-pill" aria-hidden="true">
+                      {isExpanded ? 'Hide' : 'Expand'} <span className="chevron">⌄</span>
+                    </span>
+                  </div>
                   <h2>{article.title}</h2>
                   <time>{formatDate(article.publishedAt)}</time>
                 </button>
                 {isExpanded && (
-                  <div className="article-body">
+                  <div className="article-body" lang="es" translate="yes">
                     {contentLoadingId === article.id && <p>Loading article content…</p>}
                     {contentErrorById[article.id] && <p className="error compact">{contentErrorById[article.id]}</p>}
                     {loaded?.content && <p>{loaded.content}</p>}
