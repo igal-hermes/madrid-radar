@@ -54,4 +54,4 @@ MADRID_RADAR_CHECK_URL=https://your-vercel-url.vercel.app/api/check
 CRON_SECRET=optional-same-value-as-vercel
 ```
 
-The workflow `.github/workflows/check-news.yml` calls `/api/check` every 5 minutes. The endpoint itself lives on Vercel and sends Telegram messages.
+The workflow `.github/workflows/check-news.yml` calls `/api/check` every 5 minutes, offset to minutes 2,7,12,… to avoid GitHub's most crowded schedule boundary. The endpoint itself lives on Vercel and sends Telegram messages.
