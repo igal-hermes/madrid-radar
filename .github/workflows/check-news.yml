@@ -1,0 +1,25 @@
+name: Check Real Madrid news
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Madrid Radar check endpoint
+        env:
+          CHECK_URL: ${{ secrets.MADRID_RADAR_CHECK_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CHECK_URL" ]; then
+            echo "Missing MADRID_RADAR_CHECK_URL repo secret"
+            exit 1
+          fi
+          if [ -n "$CRON_SECRET" ]; then
+            curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CHECK_URL"
+          else
+            curl -fsS -X POST "$CHECK_URL"
+          fi

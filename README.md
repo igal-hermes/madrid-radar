@@ -42,6 +42,15 @@ Open `http://localhost:5173`.
 4. Get the chat id from `https://api.telegram.org/bot<token>/getUpdates` or a helper bot.
 5. Put `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` into Vercel environment variables.
 
-## Vercel cron
+## Scheduling
 
-`vercel.json` runs `/api/check` every 10 minutes.
+Vercel Hobby only supports daily cron jobs, so this repo uses GitHub Actions for the 10-minute MVP scheduler.
+
+Set these GitHub repo secrets after the Vercel preview/project URL exists:
+
+```bash
+MADRID_RADAR_CHECK_URL=https://your-vercel-url.vercel.app/api/check
+CRON_SECRET=optional-same-value-as-vercel
+```
+
+The workflow `.github/workflows/check-news.yml` calls `/api/check` every 10 minutes. The endpoint itself lives on Vercel and sends Telegram messages.
