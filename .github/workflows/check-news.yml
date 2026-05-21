@@ -19,7 +19,7 @@ jobs:
             exit 1
           fi
           if [ -n "$CRON_SECRET" ]; then
-            curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CHECK_URL"
+            curl -fsS -X POST -H "Authorization: Bearer ${CRON_SECRET}" "$CHECK_URL"
           else
             curl -fsS -X POST "$CHECK_URL"
           fi
