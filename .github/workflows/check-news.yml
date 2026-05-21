@@ -1,8 +1,7 @@
 name: Check Real Madrid news
 
 on:
-  schedule:
-    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
+  # Scheduler migrated to Upstash QStash. Keep this only for manual smoke tests.
   workflow_dispatch:
 
 jobs:

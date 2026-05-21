@@ -45,13 +45,22 @@ Open `http://localhost:5173`.
 
 ## Scheduling
 
-Vercel Hobby only supports daily cron jobs, so this repo uses GitHub Actions for the 10-minute MVP scheduler.
+Vercel Hobby only supports daily cron jobs, and GitHub scheduled workflows proved unreliable for this project. Use Upstash QStash for the production 5-minute scheduler.
 
-Set these GitHub repo secrets after the Vercel preview/project URL exists:
+Create the schedule from a trusted machine with:
 
 ```bash
-MADRID_RADAR_CHECK_URL=https://your-vercel-url.vercel.app/api/check
-CRON_SECRET=optional-same-value-as-vercel
+export QSTASH_TOKEN=...
+export CRON_SECRET=... # same value as the Vercel CRON_SECRET env var
+node scripts/create-qstash-schedule.mjs
 ```
 
-The workflow `.github/workflows/check-news.yml` calls `/api/check` every 5 minutes, offset to minutes 2,7,12,… (`2,7,12,17,22,27,32,37,42,47,52,57 * * * *`) to avoid GitHub's most crowded schedule boundary. The endpoint itself lives on Vercel and sends Telegram messages.
+Optional env vars:
+
+```bash
+QSTASH_URL=https://qstash.upstash.io
+CHECK_URL=https://madrid-radar.vercel.app/api/check
+QSTASH_CRON='*/5 * * * *'
+```
+
+The GitHub Actions workflow remains as a manual `workflow_dispatch` smoke test only.
