@@ -10,8 +10,15 @@ type Article = {
   publishedAt?: string;
 };
 
+type ArticleContent = {
+  title?: string;
+  description?: string;
+  content?: string;
+};
+
 const sourceLabels = { all: 'All', marca: 'Marca', as: 'AS', ser: 'SER' } as const;
 type Filter = keyof typeof sourceLabels;
+const telegramGroupUrl = import.meta.env.VITE_TELEGRAM_GROUP_URL as string | undefined;
 
 function formatDate(value?: string) {
   if (!value) return 'Latest';
@@ -26,6 +33,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [checkedAt, setCheckedAt] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [expandedId, setExpandedId] = useState<string>('');
+  const [contentById, setContentById] = useState<Record<string, ArticleContent>>({});
+  const [contentLoadingId, setContentLoadingId] = useState<string>('');
+  const [contentErrorById, setContentErrorById] = useState<Record<string, string>>({});
 
   async function loadArticles() {
     setLoading(true);
@@ -43,9 +54,31 @@ function App() {
     }
   }
 
+  async function toggleArticle(article: Article) {
+    if (expandedId === article.id) {
+      setExpandedId('');
+      return;
+    }
+    setExpandedId(article.id);
+    if (contentById[article.id]) return;
+    setContentLoadingId(article.id);
+    setContentErrorById((current) => ({ ...current, [article.id]: '' }));
+    try {
+      const response = await fetch(`/api/article?url=${encodeURIComponent(article.url)}`);
+      const data = await response.json();
+      if (!data.ok) throw new Error(data.error || 'Could not load article content');
+      setContentById((current) => ({ ...current, [article.id]: data }));
+    } catch (err) {
+      setContentErrorById((current) => ({
+        ...current,
+        [article.id]: err instanceof Error ? err.message : 'Could not load article content',
+      }));
+    } finally {
+      setContentLoadingId('');
+    }
+  }
+
   useEffect(() => {
-    // The initial fetch intentionally syncs React state with the API response.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadArticles();
   }, []);
 
@@ -58,6 +91,11 @@ function App() {
         <h1>Madrid Radar</h1>
         <p>Real Madrid updates from Marca, AS Diario, and Cadena SER. Built to stay quiet until something new appears.</p>
         <div className="actions">
+          {telegramGroupUrl && (
+            <a className="primary-link" href={telegramGroupUrl} target="_blank" rel="noreferrer">
+              Join Telegram alerts
+            </a>
+          )}
           <button onClick={() => void loadArticles()} disabled={loading}>{loading ? 'Checking…' : 'Refresh'}</button>
           <span>{checkedAt ? `Checked ${formatDate(checkedAt)}` : 'Ready'}</span>
         </div>
@@ -71,13 +109,28 @@ function App() {
         </div>
         {error && <p className="error">{error}</p>}
         <div className="articles">
-          {filtered.map((article) => (
-            <a className="card" href={article.url} target="_blank" rel="noreferrer" key={article.id}>
-              <span>{article.sourceName}</span>
-              <h2>{article.title}</h2>
-              <time>{formatDate(article.publishedAt)}</time>
-            </a>
-          ))}
+          {filtered.map((article) => {
+            const isExpanded = expandedId === article.id;
+            const loaded = contentById[article.id];
+            return (
+              <article className={`card ${isExpanded ? 'expanded' : ''}`} key={article.id}>
+                <button className="card-main" onClick={() => void toggleArticle(article)} aria-expanded={isExpanded}>
+                  <span>{article.sourceName}</span>
+                  <h2>{article.title}</h2>
+                  <time>{formatDate(article.publishedAt)}</time>
+                </button>
+                {isExpanded && (
+                  <div className="article-body">
+                    {contentLoadingId === article.id && <p>Loading article content…</p>}
+                    {contentErrorById[article.id] && <p className="error compact">{contentErrorById[article.id]}</p>}
+                    {loaded?.content && <p>{loaded.content}</p>}
+                    {loaded && !loaded.content && <p>No extractable article text found. Open the source for the full article.</p>}
+                    <a href={article.url} target="_blank" rel="noreferrer">Open original →</a>
+                  </div>
+                )}
+              </article>
+            );
+          })}
           {!loading && filtered.length === 0 && <p className="empty">No articles found for this filter.</p>}
         </div>
       </section>
