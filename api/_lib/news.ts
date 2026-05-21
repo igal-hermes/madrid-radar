@@ -38,7 +38,6 @@ function cleanText(value: unknown): string {
 async function fetchText(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: { 'user-agent': 'MadridRadar/1.0 (+https://vercel.app)' },
-    next: { revalidate: 120 },
   });
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
   return response.text();

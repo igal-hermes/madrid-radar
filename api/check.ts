@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getArticles } from './_lib/news';
-import { store } from './_lib/store';
-import { sendTelegram } from './_lib/telegram';
+import { getArticles } from './_lib/news.js';
+import { store } from './_lib/store.js';
+import { sendTelegram } from './_lib/telegram.js';
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {

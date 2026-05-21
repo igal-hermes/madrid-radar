@@ -1,4 +1,4 @@
-import type { Article } from './news';
+import type { Article } from './news.js';
 
 function env(name: string): string {
   const value = process.env[name];

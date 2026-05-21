@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getArticles } from './_lib/news';
+import { getArticles } from './_lib/news.js';
 
 export default async function handler(_request: VercelRequest, response: VercelResponse) {
   try {
