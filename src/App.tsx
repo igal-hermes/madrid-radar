@@ -50,6 +50,17 @@ async function translateTexts(texts: string[]): Promise<Record<string, Translati
   return out;
 }
 
+/** Circular CSS spinner */
+function Spinner({ size = 16 }: { size?: number }) {
+  return (
+    <span
+      className="spinner"
+      style={{ width: size, height: size, borderWidth: Math.max(2, Math.round(size / 8)) }}
+      aria-hidden="true"
+    />
+  );
+}
+
 function App() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
@@ -63,9 +74,10 @@ function App() {
 
   /* ---- translation state ---- */
   const [showOriginalEs, setShowOriginalEs] = useState(false); // false = English (default), true = Spanish
-  const [titleCache, setTitleCache] = useState<Record<string, Translation>>({}); // original -> {text, lang}
-  const [contentCache, setContentCache] = useState<Record<string, Translation>>({}); // original -> {text, lang}
+  const [titleCache, setTitleCache] = useState<Record<string, Translation>>({});
+  const [contentCache, setContentCache] = useState<Record<string, Translation>>({});
   const [translatingTitles, setTranslatingTitles] = useState(false);
+  const [translatingContentId, setTranslatingContentId] = useState<string>("");
   const [translationError, setTranslationError] = useState("");
 
   async function loadArticles() {
@@ -105,11 +117,14 @@ function App() {
     if (!original || showOriginalEs) return;
     if (contentCache[original]) return;
     setTranslationError("");
+    setTranslatingContentId(expandedId);
     try {
       const res = await translateTexts([original]);
       setContentCache((prev) => ({ ...prev, ...res }));
     } catch (err) {
       setTranslationError(err instanceof Error ? err.message : "Translation failed");
+    } finally {
+      setTranslatingContentId("");
     }
   }
 
@@ -158,6 +173,14 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articles]);
 
+  /* when switching back to English, translate the currently expanded article */
+  useEffect(() => {
+    if (!showOriginalEs && expandedId && contentById[expandedId]?.content) {
+      void translateContent(contentById[expandedId].content);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showOriginalEs]);
+
   const filtered = useMemo(
     () => (filter === "all" ? articles : articles.filter((a) => a.source === filter)),
     [articles, filter]
@@ -168,6 +191,8 @@ function App() {
     if (!showOriginalEs) void translateAllTitles(filtered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
+  const isTranslatingContent = Boolean(translatingContentId);
 
   return (
     <main className="shell">
@@ -184,14 +209,20 @@ function App() {
           <button onClick={() => void loadArticles()} disabled={loading || translatingTitles}>
             {loading ? "Checking…" : "Refresh"}
           </button>
+
+          {/* Slider toggle: left = ES, right = EN (default) */}
           <button
-            className={`lang-toggle ${!showOriginalEs ? "active-en" : ""}`}
+            className={`lang-switch ${!showOriginalEs ? "lang-switch-en" : ""}`}
             onClick={() => setShowOriginalEs((v) => !v)}
-            disabled={translatingTitles}
+            disabled={translatingTitles || isTranslatingContent}
             title={showOriginalEs ? "Switch to English" : "Switch to Spanish"}
+            aria-label={showOriginalEs ? "Switch to English" : "Switch to Spanish"}
           >
-            {translatingTitles ? "⏳" : showOriginalEs ? "🇬🇧" : "🇪🇸"}
+            <span className="lang-switch-knob" aria-hidden="true">
+              {showOriginalEs ? "🇬🇧" : "🇪🇸"}
+            </span>
           </button>
+
           <span>{checkedAt ? `Checked ${formatDate(checkedAt)}` : "Ready"}</span>
         </div>
         {translationError && <p className="error compact">{translationError}</p>}
@@ -211,6 +242,8 @@ function App() {
             const isExpanded = expandedId === article.id;
             const loaded = contentById[article.id];
             const translatedTitle = !showOriginalEs && titleCache[article.title];
+            const contentIsTranslating = isExpanded && translatingContentId === article.id;
+
             return (
               <article className={`card ${isExpanded ? "expanded" : ""}`} key={article.id}>
                 <button className="card-main" onClick={() => void toggleArticle(article)} aria-expanded={isExpanded}>
@@ -227,11 +260,19 @@ function App() {
                   <div className="article-body" lang="es" translate="yes">
                     {contentLoadingId === article.id && <p>Loading article content…</p>}
                     {contentErrorById[article.id] && <p className="error compact">{contentErrorById[article.id]}</p>}
+                    {contentIsTranslating && (
+                      <div className="translate-loading">
+                        <Spinner size={16} />
+                        <span>Translating…</span>
+                      </div>
+                    )}
                     {(() => {
                       const original = loaded?.content;
                       if (!original) return null;
                       const translated = !showOriginalEs && contentCache[original];
-                      return <p>{translated ? translated.text : original}</p>;
+                      if (translated) return <p>{translated.text}</p>;
+                      if (!contentIsTranslating) return <p>{original}</p>;
+                      return null;
                     })()}
                     {loaded && !loaded.content && (
                       <p>No extractable article text found. Open the source for the full article.</p>

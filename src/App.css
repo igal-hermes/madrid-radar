@@ -40,20 +40,78 @@ p { color: #b8c2d6; font-size: 18px; max-width: 680px; }
 .primary-link:hover { background: #bfdbfe; color: #0f172a; }
 .actions button:disabled { opacity: .6; cursor: wait; }
 
-/* ---- language toggle ---- */
-.lang-toggle {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .03em;
-  padding: 9px 14px;
+/* ---- language slider toggle ---- */
+.lang-switch {
+  position: relative;
+  width: 64px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  background: #172033;
+  border: 1px solid rgba(255,255,255,.16);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background .2s ease, border-color .2s ease;
 }
-.lang-toggle.active-en {
-  background: #93c5fd;
-  color: #0f172a;
-  border-color: #93c5fd;
-}
-.lang-toggle:disabled {
+.lang-switch:disabled {
   opacity: .6;
+  cursor: wait;
+}
+.lang-switch:hover:not(:disabled) {
+  border-color: rgba(255,255,255,.28);
+}
+.lang-switch-en {
+  background: #1e3a5f;
+  border-color: rgba(147,197,253,.35);
+}
+.lang-switch-en:hover:not(:disabled) {
+  border-color: rgba(147,197,253,.55);
+}
+
+.lang-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1);
+  user-select: none;
+}
+.lang-switch-en .lang-switch-knob {
+  transform: translateX(28px);
+}
+
+/* ---- spinner / translation loading ---- */
+.spinner {
+  display: inline-block;
+  border-style: solid;
+  border-color: rgba(255,255,255,.15);
+  border-top-color: #93c5fd;
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.translate-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  color: #93c5fd;
+  font-size: 14px;
+  font-style: italic;
 }
 
 .panel { margin-top: 22px; }
