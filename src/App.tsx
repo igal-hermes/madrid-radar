@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import "./App.css";
 
 type Article = {
@@ -138,9 +139,7 @@ function App() {
     }
     setExpandedId(article.id);
     if (contentById[article.id]) {
-      if (translateEnabled) {
-        void translateContent(contentById[article.id]?.content);
-      }
+      if (translateEnabled) void translateContent(contentById[article.id]?.content);
       return;
     }
     setContentLoadingId(article.id);
@@ -165,15 +164,13 @@ function App() {
     void loadArticles();
   }, []);
 
-  /* auto-translate titles on first load and when articles arrive */
+  /* auto-translate titles on first load */
   useEffect(() => {
-    if (articles.length > 0 && !showOriginalEs) {
-      void translateAllTitles(filtered);
-    }
+    if (articles.length > 0 && !showOriginalEs) void translateAllTitles(filtered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articles]);
 
-  /* when switching back to English, translate the currently expanded article */
+  /* re-translate when switching back to EN */
   useEffect(() => {
     if (!showOriginalEs && expandedId && contentById[expandedId]?.content) {
       void translateContent(contentById[expandedId].content);
@@ -200,31 +197,35 @@ function App() {
         <div className="eyebrow">Spanish sources · Telegram alerts</div>
         <h1>Madrid Radar</h1>
         <p>Real Madrid updates from Marca, AS Diario, and Cadena SER. Built to stay quiet until something new appears.</p>
+
         <div className="actions">
           {telegramGroupUrl && (
             <a className="primary-link" href={telegramGroupUrl} target="_blank" rel="noreferrer">
               Join Telegram alerts
             </a>
           )}
-          <button onClick={() => void loadArticles()} disabled={loading || translatingTitles}>
-            {loading ? "Checking…" : "Refresh"}
-          </button>
-
-          {/* Slider toggle: left = ES, right = EN (default) */}
           <button
-            className={`lang-switch ${!showOriginalEs ? "lang-switch-en" : ""}`}
+            className="icon-round refresh-btn"
+            onClick={() => void loadArticles()}
+            disabled={loading}
+            title="Refresh"
+            aria-label="Refresh"
+          >
+            <RefreshCw size={16} />
+          </button>
+          <button
+            className="icon-round lang-btn"
             onClick={() => setShowOriginalEs((v) => !v)}
             disabled={translatingTitles || isTranslatingContent}
             title={showOriginalEs ? "Switch to English" : "Switch to Spanish"}
             aria-label={showOriginalEs ? "Switch to English" : "Switch to Spanish"}
           >
-            <span className="lang-switch-knob" aria-hidden="true">
-              {showOriginalEs ? "🇬🇧" : "🇪🇸"}
-            </span>
+            {showOriginalEs ? "🇪🇸" : "🇬🇧"}
           </button>
-
           <span>{checkedAt ? `Checked ${formatDate(checkedAt)}` : "Ready"}</span>
         </div>
+
+        {loading && <p className="loading-hint">Loading articles…</p>}
         {translationError && <p className="error compact">{translationError}</p>}
       </section>
 
