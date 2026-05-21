@@ -16,8 +16,7 @@ if (!cronSecret) {
   process.exit(1);
 }
 
-const encodedDestination = encodeURIComponent(destination);
-const response = await fetch(`${qstashUrl}/v2/schedules/${encodedDestination}`, {
+const response = await fetch(`${qstashUrl}/v2/schedules/${destination}`, {
   method: 'POST',
   headers: {
     Authorization: `Bearer ${qstashToken}`,
