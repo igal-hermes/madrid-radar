@@ -62,7 +62,7 @@ function App() {
   const [contentErrorById, setContentErrorById] = useState<Record<string, string>>({});
 
   /* ---- translation state ---- */
-  const [translate, setTranslate] = useState(false); // true = show English
+  const [showOriginalEs, setShowOriginalEs] = useState(false); // false = English (default), true = Spanish
   const [titleCache, setTitleCache] = useState<Record<string, Translation>>({}); // original -> {text, lang}
   const [contentCache, setContentCache] = useState<Record<string, Translation>>({}); // original -> {text, lang}
   const [translatingTitles, setTranslatingTitles] = useState(false);
@@ -95,7 +95,6 @@ function App() {
       setTitleCache((prev) => ({ ...prev, ...res }));
     } catch (err) {
       setTranslationError(err instanceof Error ? err.message : "Translation failed");
-      setTranslate(false);
     } finally {
       setTranslatingTitles(false);
     }
@@ -103,7 +102,7 @@ function App() {
 
   /* translate article body when expanded */
   async function translateContent(original: string | undefined) {
-    if (!original || !translate) return;
+    if (!original || showOriginalEs) return;
     if (contentCache[original]) return;
     setTranslationError("");
     try {
@@ -114,6 +113,8 @@ function App() {
     }
   }
 
+  const translateEnabled = !showOriginalEs;
+
   /* fetch article content */
   async function toggleArticle(article: Article) {
     if (expandedId === article.id) {
@@ -122,8 +123,7 @@ function App() {
     }
     setExpandedId(article.id);
     if (contentById[article.id]) {
-      // content already loaded, translate if needed
-      if (translate) {
+      if (translateEnabled) {
         void translateContent(contentById[article.id]?.content);
       }
       return;
@@ -135,7 +135,7 @@ function App() {
       const data = await response.json();
       if (!data.ok) throw new Error(data.error || "Could not load article content");
       setContentById((current) => ({ ...current, [article.id]: data }));
-      if (translate) void translateContent(data?.content);
+      if (translateEnabled) void translateContent(data?.content);
     } catch (err) {
       setContentErrorById((current) => ({
         ...current,
@@ -150,22 +150,22 @@ function App() {
     void loadArticles();
   }, []);
 
-  /* when translate toggles ON, batch-translate all visible titles */
+  /* auto-translate titles on first load and when articles arrive */
   useEffect(() => {
-    if (translate && articles.length > 0) {
+    if (articles.length > 0 && !showOriginalEs) {
       void translateAllTitles(filtered);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translate]);
+  }, [articles]);
 
   const filtered = useMemo(
     () => (filter === "all" ? articles : articles.filter((a) => a.source === filter)),
     [articles, filter]
   );
 
-  /* re-translate when filter changes and show original articles counts */
+  /* re-translate when filter changes */
   useEffect(() => {
-    if (translate) void translateAllTitles(filtered);
+    if (!showOriginalEs) void translateAllTitles(filtered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
@@ -181,16 +181,16 @@ function App() {
               Join Telegram alerts
             </a>
           )}
-          <button onClick={() => void loadArticles()} disabled={loading}>
+          <button onClick={() => void loadArticles()} disabled={loading || translatingTitles}>
             {loading ? "Checking…" : "Refresh"}
           </button>
           <button
-            className={`lang-toggle ${translate ? "active" : ""}`}
-            onClick={() => setTranslate((v) => !v)}
+            className={`lang-toggle ${!showOriginalEs ? "active-en" : ""}`}
+            onClick={() => setShowOriginalEs((v) => !v)}
             disabled={translatingTitles}
-            title={translate ? "Show original Spanish" : "Translate to English"}
+            title={showOriginalEs ? "Switch to English" : "Switch to Spanish"}
           >
-            {translatingTitles ? "Translating…" : translate ? "🇪🇸 Español" : "🇬🇧 English"}
+            {translatingTitles ? "⏳" : showOriginalEs ? "🇬🇧" : "🇪🇸"}
           </button>
           <span>{checkedAt ? `Checked ${formatDate(checkedAt)}` : "Ready"}</span>
         </div>
@@ -210,7 +210,7 @@ function App() {
           {filtered.map((article) => {
             const isExpanded = expandedId === article.id;
             const loaded = contentById[article.id];
-            const translatedTitle = translate && titleCache[article.title];
+            const translatedTitle = !showOriginalEs && titleCache[article.title];
             return (
               <article className={`card ${isExpanded ? "expanded" : ""}`} key={article.id}>
                 <button className="card-main" onClick={() => void toggleArticle(article)} aria-expanded={isExpanded}>
@@ -221,7 +221,6 @@ function App() {
                     </span>
                   </div>
                   <h2>{translatedTitle ? translatedTitle.text : article.title}</h2>
-                  {translatedTitle && <span className="translated-badge">Translated from Spanish</span>}
                   <time>{formatDate(article.publishedAt)}</time>
                 </button>
                 {isExpanded && (
@@ -230,17 +229,9 @@ function App() {
                     {contentErrorById[article.id] && <p className="error compact">{contentErrorById[article.id]}</p>}
                     {(() => {
                       const original = loaded?.content;
-                      const translated = original && contentCache[original];
-                      if (translated) {
-                        return (
-                          <>
-                            <p>{translated.text}</p>
-                            <p className="translated-badge inline">Translated from Spanish</p>
-                          </>
-                        );
-                      }
-                      if (original) return <p>{original}</p>;
-                      return null;
+                      if (!original) return null;
+                      const translated = !showOriginalEs && contentCache[original];
+                      return <p>{translated ? translated.text : original}</p>;
                     })()}
                     {loaded && !loaded.content && (
                       <p>No extractable article text found. Open the source for the full article.</p>
