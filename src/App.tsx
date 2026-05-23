@@ -4,7 +4,7 @@ import "./App.css";
 
 type Article = {
   id: string;
-  source: "marca" | "as" | "ser";
+  source: "marca" | "as" | "ser" | "managing";
   sourceName: string;
   title: string;
   url: string;
@@ -22,9 +22,10 @@ type Translation = {
   detected_source_language: string;
 };
 
-const sourceLabels = { all: "All", marca: "Marca", as: "AS", ser: "SER" } as const;
+const sourceLabels = { all: "All", marca: "Marca", as: "AS", ser: "SER", managing: "Managing Madrid" } as const;
 type Filter = keyof typeof sourceLabels;
-const telegramGroupUrl = import.meta.env.VITE_TELEGRAM_GROUP_URL as string | undefined;
+const telegramUrl = (import.meta.env.VITE_TELEGRAM_URL || import.meta.env.VITE_TELEGRAM_GROUP_URL) as string | undefined;
+const PAGE_SIZE = 12;
 
 function formatDate(value?: string) {
   if (!value) return "Latest";
@@ -65,6 +66,7 @@ function Spinner({ size = 16 }: { size?: number }) {
 function App() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [checkedAt, setCheckedAt] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -100,7 +102,10 @@ function App() {
   /* translate all visible titles in one batch */
   async function translateAllTitles(arts: Article[]) {
     setTranslationError("");
-    const toTranslate = arts.map((a) => a.title).filter((t) => t && !titleCache[t]);
+    const toTranslate = arts
+      .filter((a) => a.source !== "managing")
+      .map((a) => a.title)
+      .filter((t) => t && !titleCache[t]);
     if (toTranslate.length === 0) return;
     setTranslatingTitles(true);
     try {
@@ -114,8 +119,8 @@ function App() {
   }
 
   /* translate article body when expanded */
-  async function translateContent(original: string | undefined) {
-    if (!original || showOriginalEs) return;
+  async function translateContent(original: string | undefined, shouldTranslate = true) {
+    if (!original || showOriginalEs || !shouldTranslate) return;
     if (contentCache[original]) return;
     setTranslationError("");
     setTranslatingContentId(expandedId);
@@ -139,7 +144,7 @@ function App() {
     }
     setExpandedId(article.id);
     if (contentById[article.id]) {
-      if (translateEnabled) void translateContent(contentById[article.id]?.content);
+      if (translateEnabled) void translateContent(contentById[article.id]?.content, article.source !== "managing");
       return;
     }
     setContentLoadingId(article.id);
@@ -149,7 +154,7 @@ function App() {
       const data = await response.json();
       if (!data.ok) throw new Error(data.error || "Could not load article content");
       setContentById((current) => ({ ...current, [article.id]: data }));
-      if (translateEnabled) void translateContent(data?.content);
+      if (translateEnabled) void translateContent(data?.content, article.source !== "managing");
     } catch (err) {
       setContentErrorById((current) => ({
         ...current,
@@ -164,44 +169,55 @@ function App() {
     void loadArticles();
   }, []);
 
-  /* auto-translate titles on first load */
-  useEffect(() => {
-    if (articles.length > 0 && !showOriginalEs) void translateAllTitles(filtered);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [articles]);
-
-  /* re-translate when switching back to EN */
-  useEffect(() => {
-    if (!showOriginalEs && expandedId && contentById[expandedId]?.content) {
-      void translateContent(contentById[expandedId].content);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showOriginalEs]);
-
   const filtered = useMemo(
     () => (filter === "all" ? articles : articles.filter((a) => a.source === filter)),
     [articles, filter]
   );
 
-  /* re-translate when filter changes */
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = Math.min(currentPage, pageCount);
+  const paginatedArticles = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
+
   useEffect(() => {
-    if (!showOriginalEs) void translateAllTitles(filtered);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setCurrentPage(1);
+    setExpandedId("");
   }, [filter]);
+
+  useEffect(() => {
+    if (currentPage > pageCount) setCurrentPage(pageCount);
+  }, [currentPage, pageCount]);
+
+  /* auto-translate only the titles visible on the current page */
+  useEffect(() => {
+    if (paginatedArticles.length > 0 && !showOriginalEs) void translateAllTitles(paginatedArticles);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginatedArticles, showOriginalEs]);
+
+  /* re-translate when switching back to EN */
+  useEffect(() => {
+    if (!showOriginalEs && expandedId && contentById[expandedId]?.content) {
+      const article = articles.find((item) => item.id === expandedId);
+      void translateContent(contentById[expandedId].content, article?.source !== "managing");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showOriginalEs]);
 
   const isTranslatingContent = Boolean(translatingContentId);
 
   return (
     <main className="shell">
       <section className="hero">
-        <div className="eyebrow">Spanish sources · Telegram alerts</div>
+        <div className="eyebrow">Spanish + Madrid sources · Telegram alerts</div>
         <h1>Madrid Radar</h1>
-        <p>Real Madrid updates from Marca, AS Diario, and Cadena SER. Built to stay quiet until something new appears.</p>
+        <p>Real Madrid updates from Marca, AS Diario, Cadena SER, and Managing Madrid. Built to stay quiet until something new appears.</p>
 
         <div className="actions">
-          {telegramGroupUrl && (
-            <a className="primary-link" href={telegramGroupUrl} target="_blank" rel="noreferrer">
-              Join Telegram alerts
+          {telegramUrl && (
+            <a className="primary-link" href={telegramUrl} target="_blank" rel="noreferrer">
+              Follow Telegram alerts
             </a>
           )}
           <button
@@ -211,7 +227,7 @@ function App() {
             title="Refresh"
             aria-label="Refresh"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={34} strokeWidth={3} />
           </button>
           <button
             className="icon-round lang-btn"
@@ -220,7 +236,7 @@ function App() {
             title={showOriginalEs ? "Switch to English" : "Switch to Spanish"}
             aria-label={showOriginalEs ? "Switch to English" : "Switch to Spanish"}
           >
-            {showOriginalEs ? "🇪🇸" : "🇬🇧"}
+            {showOriginalEs ? "🇬🇧" : "🇪🇸"}
           </button>
           <span>{checkedAt ? `Checked ${formatDate(checkedAt)}` : "Ready"}</span>
         </div>
@@ -239,10 +255,10 @@ function App() {
         </div>
         {error && <p className="error">{error}</p>}
         <div className="articles">
-          {filtered.map((article) => {
+          {paginatedArticles.map((article) => {
             const isExpanded = expandedId === article.id;
             const loaded = contentById[article.id];
-            const translatedTitle = !showOriginalEs && titleCache[article.title];
+            const translatedTitle = article.source !== "managing" && !showOriginalEs && titleCache[article.title];
             const contentIsTranslating = isExpanded && translatingContentId === article.id;
 
             return (
@@ -258,7 +274,7 @@ function App() {
                   <time>{formatDate(article.publishedAt)}</time>
                 </button>
                 {isExpanded && (
-                  <div className="article-body" lang="es" translate="yes">
+                  <div className="article-body" lang={article.source === "managing" ? "en" : "es"} translate={article.source === "managing" ? "no" : "yes"}>
                     {contentLoadingId === article.id && <p>Loading article content…</p>}
                     {contentErrorById[article.id] && <p className="error compact">{contentErrorById[article.id]}</p>}
                     {contentIsTranslating && (
@@ -270,7 +286,7 @@ function App() {
                     {(() => {
                       const original = loaded?.content;
                       if (!original) return null;
-                      const translated = !showOriginalEs && contentCache[original];
+                      const translated = article.source !== "managing" && !showOriginalEs && contentCache[original];
                       if (translated) return <p>{translated.text}</p>;
                       if (!contentIsTranslating) return <p>{original}</p>;
                       return null;
@@ -288,6 +304,25 @@ function App() {
           })}
           {!loading && filtered.length === 0 && <p className="empty">No articles found for this filter.</p>}
         </div>
+        {filtered.length > PAGE_SIZE && (
+          <div className="pagination" aria-label="Article pagination">
+            <button
+              onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </button>
+            <span>
+              Page {page} of {pageCount} · {filtered.length} articles
+            </span>
+            <button
+              onClick={() => setCurrentPage((value) => Math.min(pageCount, value + 1))}
+              disabled={page === pageCount}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </section>
 
       <footer className="footer-tip">

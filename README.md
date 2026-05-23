@@ -1,6 +1,6 @@
 # Madrid Radar
 
-A tiny Vercel app that watches Spanish Real Madrid news sources and sends new-item alerts to a dedicated Telegram bot chat.
+A tiny Vercel app that watches Spanish Real Madrid news sources and sends new-item alerts to a dedicated Telegram channel.
 
 ## Sources
 
@@ -13,7 +13,7 @@ A tiny Vercel app that watches Spanish Real Madrid news sources and sends new-it
 ```bash
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
-VITE_TELEGRAM_GROUP_URL=...
+VITE_TELEGRAM_URL=...
 KV_REST_API_URL=...
 KV_REST_API_TOKEN=...
 CRON_SECRET=optional
@@ -38,10 +38,10 @@ Open `http://localhost:5173`.
 ## Telegram setup
 
 1. Create a bot with `@BotFather`.
-2. Add it to the friend's Telegram group.
-3. Send one message in the group.
-4. Get the chat id from `https://api.telegram.org/bot<token>/getUpdates` or a helper bot.
-5. Put `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` into Vercel environment variables.
+2. Add it to the public Telegram channel as an admin.
+3. Grant the bot permission to post messages.
+4. For the public channel, set `TELEGRAM_CHAT_ID=@madridradar`. For a private channel, use the numeric `-100...` chat id.
+5. Put `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and `VITE_TELEGRAM_URL=https://t.me/madridradar` into Vercel environment variables.
 
 ## Scheduling
 
