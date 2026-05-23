@@ -210,9 +210,9 @@ function App() {
   return (
     <main className="shell">
       <section className="hero">
-        <div className="eyebrow">Spanish + Madrid sources · Telegram alerts</div>
+        <div className="eyebrow">Real Madrid news radar</div>
         <h1>Madrid Radar</h1>
-        <p>Real Madrid updates from Marca, AS Diario, Cadena SER, and Managing Madrid. Built to stay quiet until something new appears.</p>
+        <p>Real Madrid updates from Marca, AS Diario, Cadena SER, and Managing Madrid — translated, summarized, and posted when something new breaks.</p>
 
         <div className="actions">
           {telegramUrl && (
@@ -238,7 +238,7 @@ function App() {
           >
             {showOriginalEs ? "🇬🇧" : "🇪🇸"}
           </button>
-          <span>{checkedAt ? `Checked ${formatDate(checkedAt)}` : "Ready"}</span>
+          <span className="status-pill">{checkedAt ? `Checked ${formatDate(checkedAt)}` : "Ready"}</span>
         </div>
 
         {loading && <p className="loading-hint">Loading articles…</p>}
